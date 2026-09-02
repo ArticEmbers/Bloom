@@ -10,8 +10,6 @@ import TextAttachment from './components/TextAttachment'
 import StatusPicker from './components/StatusPicker'
 import CreateServerModal from './components/CreateServerModal'
 import CreateChannelModal from './components/CreateChannelModal'
-import JoinServerModal from './components/JoinServerModal'
-import ServerInviteModal from './components/ServerInviteModal'
 import VoiceChat from './components/VoiceChat'
 import VoiceSettings from './components/VoiceSettings'
 import MemberList from './components/MemberList'
@@ -162,8 +160,6 @@ function App() {
 
   const [serverName, setServerName] = useState('')
   const [creatingServer, setCreatingServer] = useState(false)
-  const [joiningServer, setJoiningServer] = useState(false)
-  const [showServerInvite, setShowServerInvite] = useState(false)
 
   // =========================================================
   // CHANNELS
@@ -1337,38 +1333,14 @@ function App() {
   // =========================================================
 
   async function loadServers() {
-    if (!session?.user?.id) return
-
-    const { data: memberships, error: membershipError } =
-      await supabase
-        .from('server_members')
-        .select('server_id')
-        .eq('user_id', session.user.id)
-
-    if (membershipError) {
-      return setStatus(
-        `Error loading your Spaces: ${membershipError.message}`
-      )
-    }
-
-    const serverIds = Array.from(
-      new Set((memberships || []).map((row) => row.server_id).filter(Boolean))
-    )
-
-    if (!serverIds.length) {
-      setServers([])
-      return
-    }
-
     const { data, error } = await supabase
       .from('servers')
       .select('*')
-      .in('id', serverIds)
       .order('created_at')
 
     if (error) {
       return setStatus(
-        `Error loading your Spaces: ${error.message}`
+        `Error loading Spaces: ${error.message}`
       )
     }
 
@@ -1431,67 +1403,6 @@ function App() {
     setCreatingServer(false)
 
     await selectServer(server)
-  }
-
-  async function joinServerByCode(code) {
-    if (!session?.user?.id) return null
-
-    const cleanCode = String(code || '').trim().toUpperCase()
-    if (!cleanCode) {
-      setStatus('Enter a Space code.')
-      return null
-    }
-
-    const { data, error } = await supabase.rpc(
-      'join_server_by_invite_code',
-      { p_code: cleanCode }
-    )
-
-    if (error) {
-      setStatus(error.message || 'Unable to join this Space.')
-      return null
-    }
-
-    const joinedServer = Array.isArray(data) ? data[0] : data
-
-    if (!joinedServer) {
-      setStatus('That Space code is invalid.')
-      return null
-    }
-
-    await loadServers()
-    setJoiningServer(false)
-    setStatus('')
-    await selectServer(joinedServer)
-    return joinedServer
-  }
-
-  async function regenerateServerInviteCode() {
-    if (!selectedServer || selectedServer.owner_id !== session?.user?.id) {
-      return null
-    }
-
-    const { data, error } = await supabase.rpc(
-      'regenerate_server_invite_code',
-      { p_server_id: selectedServer.id }
-    )
-
-    if (error) {
-      setStatus(`Error regenerating code: ${error.message}`)
-      return null
-    }
-
-    const updated = Array.isArray(data) ? data[0] : data
-    if (!updated) return null
-
-    setSelectedServer(updated)
-    setServers((current) =>
-      current.map((server) =>
-        server.id === updated.id ? updated : server
-      )
-    )
-    setStatus('')
-    return updated
   }
 
   async function selectServer(server) {
@@ -3508,13 +3419,6 @@ function App() {
 
           <button
             className="add-server"
-            onClick={() => setJoiningServer(true)}
-          >
-            ↗ Join Space
-          </button>
-
-          <button
-            className="add-server"
             onClick={() => setCreatingServer(true)}
           >
             ＋ Create Space
@@ -3846,15 +3750,6 @@ function App() {
           {!directMode &&
             selectedServer && (
               <div className="channel-header-actions">
-                {selectedServer.owner_id === session?.user?.id && (
-                  <button
-                    onClick={() => setShowServerInvite(true)}
-                    title="Invite people"
-                  >
-                    🔗
-                  </button>
-                )}
-
                 {can(
                   'manage_roles'
                 ) && (
@@ -5373,20 +5268,6 @@ function App() {
             </div>
           </div>
         )}
-
-      <JoinServerModal
-        open={joiningServer}
-        onClose={() => setJoiningServer(false)}
-        onJoin={joinServerByCode}
-      />
-
-      <ServerInviteModal
-        open={showServerInvite && Boolean(selectedServer)}
-        server={selectedServer}
-        isOwner={selectedServer?.owner_id === session?.user?.id}
-        onClose={() => setShowServerInvite(false)}
-        onRegenerate={regenerateServerInviteCode}
-      />
 
       <CreateServerModal
         open={creatingServer}
