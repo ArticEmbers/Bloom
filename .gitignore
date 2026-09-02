@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Production builds
+dist/
+build/
+
+# Environment / secrets
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local Vite cache
+.vite/
+
+# Test / coverage output
+coverage/
+
+# Misc
+*.local
