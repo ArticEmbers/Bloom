@@ -1,0 +1,17 @@
+Bloom Global Badges
+
+These are the global badges currently defined in the Bloom project:
+
+1. Owner
+   Icon: 👑
+   Description: Bloom owner and global administrator.
+   Priority: 100
+
+2. Early Supporter
+   Icon: 💖
+   Description: Supported Bloom during its early days.
+   Priority: 90
+
+Important:
+The current profile-social-features.sql in the project only defines these two badges.
+The additional badges previously discussed (Developer, Contributor, Founding Member, Bug Hunter, Artist, VIP, Community Helper, Friend of Bloom, Verified, Staff, Partner, Event Host) are NOT currently defined by that SQL unless you add them separately.

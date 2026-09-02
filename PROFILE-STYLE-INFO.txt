@@ -1,0 +1,6 @@
+Profile style options
+
+Decorations: none, sparkle, flower, halo, moon, hearts, crown, orbit, rainbow, crystal.
+Effects: none, glow, float, stars, sparkles, hearts, shimmer, pulse, fireflies, orbit.
+
+All effects are free, local visual CSS animations; the selected values are stored on the profile.

@@ -1,0 +1,9 @@
+{
+  "name": "Bloom",
+  "short_name": "Bloom",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#151014",
+  "theme_color": "#e88aa5",
+  "description": "Bloom messaging and community app"
+}

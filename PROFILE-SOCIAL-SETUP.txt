@@ -1,0 +1,32 @@
+BLOOM PROFILE / SOCIAL FEATURES SETUP
+
+1. Supabase
+Run profile-social-features.sql once in Supabase SQL Editor.
+
+2. Bloom owner
+Find your Supabase Auth user UUID and replace YOUR_SUPABASE_USER_UUID in the commented SQL lines at the bottom of profile-social-features.sql. Run those lines to make yourself a Bloom admin and grant yourself Owner + Early Supporter.
+
+3. Vercel environment variables
+Keep your existing:
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+
+Add:
+VITE_BLOOM_OWNER_ID=YOUR_SUPABASE_USER_UUID
+VITE_SPOTIFY_CLIENT_ID=YOUR_SPOTIFY_CLIENT_ID
+VITE_SPOTIFY_REDIRECT_URI=https://YOUR-DOMAIN/
+
+The Spotify redirect URI must exactly match the one registered in your Spotify developer app. For localhost, use http://127.0.0.1:5173/ instead of localhost.
+
+4. Spotify
+Create a Spotify developer app, add your exact redirect URI, then put the Client ID into VITE_SPOTIFY_CLIENT_ID. Bloom uses Authorization Code with PKCE in the browser, so no Spotify client secret is put in .env or exposed to users.
+
+5. Features
+- YouTube and TikTok links in messages get embedded previews.
+- Spotify currently-playing activity appears on profiles when enabled/playing.
+- Avatar decorations and profile effects are saved per profile.
+- Global Owner / Early Supporter badges appear on profiles; clicking on mobile or hovering on desktop reveals the badge description.
+- Only Bloom admins can grant/revoke global badges through the protected RPC functions.
+
+
+Additional badges included: Developer, Contributor, Founding Member, Bug Hunter, Artist, VIP, Community Helper, Friend of Bloom.
