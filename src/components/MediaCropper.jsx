@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './MediaCropper.css'
 

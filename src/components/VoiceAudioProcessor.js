@@ -102,11 +102,9 @@ export async function createMicrophonePipeline({
         compressor.disconnect()
         gain.disconnect()
         destination.disconnect?.()
-      } catch (error) {
-        console.debug('Voice audio node cleanup skipped:', error)
-      }
+      } catch {}
       stream.getTracks().forEach((track) => track.stop())
-      try { context.close() } catch (error) { console.debug('AudioContext close skipped:', error) }
+      try { context.close() } catch {}
     },
   }
 }
@@ -124,7 +122,7 @@ export async function createMonitorPipeline({
   })
 
   if (outputDeviceId && typeof pipeline.context.setSinkId === 'function') {
-    try { await pipeline.context.setSinkId(outputDeviceId) } catch (error) { console.debug('Output device selection unavailable:', error) }
+    try { await pipeline.context.setSinkId(outputDeviceId) } catch {}
   }
 
   const source = pipeline.context.createMediaStreamSource(pipeline.processedStream)
@@ -134,7 +132,7 @@ export async function createMonitorPipeline({
 
   const stop = pipeline.stop
   pipeline.stop = () => {
-    try { source.disconnect(); outputGain.disconnect() } catch (error) { console.debug('Monitor node cleanup skipped:', error) }
+    try { source.disconnect(); outputGain.disconnect() } catch {}
     stop()
   }
   return pipeline

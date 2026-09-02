@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 const EMOJI_SHORTCODES = {
   heart: '❤️', red_heart: '❤️', love: '❤️',
   broken_heart: '💔', blue_heart: '💙', green_heart: '💚', yellow_heart: '💛', purple_heart: '💜', black_heart: '🖤', white_heart: '🤍',
@@ -19,7 +18,7 @@ const EMOJI_ALIASES = Object.entries(EMOJI_SHORTCODES)
 
 function replaceEmojiShortcodes(text) {
   if (!text) return text
-  return String(text).replace(/(^|\s):([a-zA-Z0-9_+-]+):?(?=\s|$|[.!?,])/g, (full, prefix, key) => {
+  return String(text).replace(/(^|\s):([a-zA-Z0-9_+\-]+):?(?=\s|$|[.!?,])/g, (full, prefix, key) => {
     return Object.prototype.hasOwnProperty.call(EMOJI_SHORTCODES, key)
       ? `${prefix}${EMOJI_SHORTCODES[key]}`
       : full

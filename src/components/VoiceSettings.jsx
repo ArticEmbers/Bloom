@@ -62,8 +62,6 @@ function VoiceSettings({ value, onChange }) {
   }
 
   useEffect(() => {
-    // Initial device enumeration is intentionally triggered after mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshDevices()
     const handler = () => refreshDevices()
     navigator.mediaDevices?.addEventListener?.('devicechange', handler)

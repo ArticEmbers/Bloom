@@ -2,9 +2,9 @@ import { Fragment } from 'react'
 import { replaceEmojiShortcodes } from './EmojiShortcodes'
 
 function renderTextWithShortcodes(text) {
-  const parts = String(text || '').split(/(:[a-zA-Z0-9_+-]+:)/g)
+  const parts = String(text || '').split(/(:[a-zA-Z0-9_+\-]+:)/g)
   return parts.map((part, index) => {
-    const match = part.match(/^:([a-zA-Z0-9_+-]+):$/)
+    const match = part.match(/^:([a-zA-Z0-9_+\-]+):$/)
     if (!match) return <Fragment key={index}>{part}</Fragment>
     const replaced = replaceEmojiShortcodes(part)
     return replaced !== part

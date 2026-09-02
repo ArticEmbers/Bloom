@@ -10,6 +10,8 @@ import TextAttachment from './components/TextAttachment'
 import StatusPicker from './components/StatusPicker'
 import CreateServerModal from './components/CreateServerModal'
 import CreateChannelModal from './components/CreateChannelModal'
+import JoinServerModal from './components/JoinServerModal'
+import ServerInviteModal from './components/ServerInviteModal'
 import VoiceChat from './components/VoiceChat'
 import VoiceSettings from './components/VoiceSettings'
 import MemberList from './components/MemberList'
@@ -40,7 +42,7 @@ const PERMISSION_LABELS = {
   send_voice_messages: 'Send voice messages',
 }
 
-const APPEARANCE_STORAGE_VERSION = 2
+const APPEARANCE_STORAGE_VERSION = 3
 
 const DEFAULT_APPEARANCE = {
   mode: 'dark',
@@ -141,6 +143,16 @@ function App() {
   const [settingsBannerUrl, setSettingsBannerUrl] = useState('')
   const [settingsPresenceStatus, setSettingsPresenceStatus] = useState('online')
   const [settingsCustomStatus, setSettingsCustomStatus] = useState('')
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [resetPasswordValue, setResetPasswordValue] = useState('')
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('')
+  const [resettingPassword, setResettingPassword] = useState(false)
   const [voiceSettings, setVoiceSettings] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('bloom-voice-settings') || '{}')
@@ -171,6 +183,8 @@ function App() {
 
   const [serverName, setServerName] = useState('')
   const [creatingServer, setCreatingServer] = useState(false)
+  const [joiningServer, setJoiningServer] = useState(false)
+  const [showServerInvite, setShowServerInvite] = useState(false)
 
   // =========================================================
   // CHANNELS
@@ -533,6 +547,8 @@ function App() {
     const normalized = {
       ...nextAppearance,
       appearanceVersion: APPEARANCE_STORAGE_VERSION,
+      wallpaperOpacity: Math.max(0, Math.min(100, Number(nextAppearance.wallpaperOpacity ?? 100))),
+      wallpaperBlur: Number(nextAppearance.wallpaperBlur || 0),
     }
     setAppearance(normalized)
 
@@ -748,10 +764,16 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
         if (!mounted) return
 
         setSession(newSession)
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setResetPasswordValue('')
+          setResetPasswordConfirm('')
+          setShowPasswordReset(true)
+        }
 
         if (newSession) {
           await loadProfile(
@@ -894,6 +916,12 @@ function App() {
   }, [session?.user?.id])
 
   useEffect(() => {
+    if (profile) {
+      loadServers()
+    }
+  }, [profile])
+
+  useEffect(() => {
     return () => {
       clearInterval(
         recordingTimerRef.current
@@ -950,6 +978,42 @@ function App() {
   async function signOut() {
     await supabase.auth.signOut()
     setStatus('')
+  }
+
+  async function requestPasswordReset() {
+    const cleanEmail = email.trim()
+    if (!cleanEmail) return setStatus('Enter your email address first.')
+    setStatus('Sending password reset email...')
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, { redirectTo: window.location.origin })
+    if (error) return setStatus(`Error: ${error.message}`)
+    setStatus('Password reset email sent. Check your inbox.')
+  }
+
+  async function changePassword() {
+    if (!session?.user?.email) return
+    if (!currentPassword || !newPassword || !confirmNewPassword) return setStatus('Fill in your current password and both new password fields.')
+    if (newPassword.length < 6) return setStatus('Your new password must be at least 6 characters.')
+    if (newPassword !== confirmNewPassword) return setStatus('The new passwords do not match.')
+    setChangingPassword(true)
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: session.user.email, password: currentPassword })
+    if (verifyError) { setChangingPassword(false); return setStatus('Current password is incorrect.') }
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setChangingPassword(false)
+    if (error) return setStatus(`Error changing password: ${error.message}`)
+    setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword('')
+    setStatus('Password changed successfully.')
+  }
+
+  async function finishPasswordReset() {
+    if (!resetPasswordValue || !resetPasswordConfirm) return setStatus('Enter and confirm your new password.')
+    if (resetPasswordValue.length < 6) return setStatus('Your new password must be at least 6 characters.')
+    if (resetPasswordValue !== resetPasswordConfirm) return setStatus('The new passwords do not match.')
+    setResettingPassword(true)
+    const { error } = await supabase.auth.updateUser({ password: resetPasswordValue })
+    setResettingPassword(false)
+    if (error) return setStatus(`Error resetting password: ${error.message}`)
+    setResetPasswordValue(''); setResetPasswordConfirm(''); setShowPasswordReset(false)
+    setStatus('Password reset successfully. You can continue using Bloom.')
   }
 
   async function createProfile() {
@@ -1323,9 +1387,22 @@ function App() {
   // =========================================================
 
   async function loadServers() {
+    if (!session?.user?.id) return
+
+    const { data: memberships, error: membershipError } = await supabase
+      .from('server_members')
+      .select('server_id')
+      .eq('user_id', session.user.id)
+
+    if (membershipError) return setStatus(`Error loading your Spaces: ${membershipError.message}`)
+
+    const serverIds = Array.from(new Set((memberships || []).map((row) => row.server_id).filter(Boolean)))
+    if (!serverIds.length) { setServers([]); return }
+
     const { data, error } = await supabase
       .from('servers')
       .select('*')
+      .in('id', serverIds)
       .order('created_at')
 
     if (error) {
@@ -1336,12 +1413,6 @@ function App() {
 
     setServers(data || [])
   }
-
-  useEffect(() => {
-    if (profile) {
-      loadServers()
-    }
-  }, [profile])
 
   async function createServer(event) {
     event.preventDefault()
@@ -1399,6 +1470,33 @@ function App() {
     setCreatingServer(false)
 
     await selectServer(server)
+  }
+
+  async function joinServerByCode(code) {
+    if (!session?.user?.id) return null
+    const cleanCode = String(code || '').trim().toUpperCase()
+    if (!cleanCode) return setStatus('Enter a Space code.')
+    const { data, error } = await supabase.rpc('join_server_by_invite_code', { p_code: cleanCode })
+    if (error) { setStatus(error.message || 'Unable to join this Space.'); return null }
+    const joinedServer = Array.isArray(data) ? data[0] : data
+    if (!joinedServer) return setStatus('That Space code is invalid.')
+    await loadServers()
+    setJoiningServer(false)
+    setStatus('')
+    await selectServer(joinedServer)
+    return joinedServer
+  }
+
+  async function regenerateServerInviteCode() {
+    if (!selectedServer || selectedServer.owner_id !== session?.user?.id) return null
+    const { data, error } = await supabase.rpc('regenerate_server_invite_code', { p_server_id: selectedServer.id })
+    if (error) { setStatus(`Error regenerating code: ${error.message}`); return null }
+    const updated = Array.isArray(data) ? data[0] : data
+    if (!updated) return null
+    setSelectedServer(updated)
+    setServers((current) => current.map((server) => server.id === updated.id ? updated : server))
+    setStatus('')
+    return updated
   }
 
   async function selectServer(server) {
@@ -1681,8 +1779,6 @@ function App() {
       return
     }
 
-    // This effect intentionally triggers the async loader when the channel changes.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMessages(selectedChannel.id)
 
     const subscription =
@@ -3181,6 +3277,14 @@ function App() {
           </div>
 
           <button
+            type="button"
+            className="forgot-password-button"
+            onClick={requestPasswordReset}
+          >
+            Forgot password?
+          </button>
+
+          <button
             className="primary-button"
             onClick={signIn}
           >
@@ -3377,6 +3481,13 @@ function App() {
             }
           >
             ✉ Messages
+          </button>
+
+          <button
+            className="add-server"
+            onClick={() => setJoiningServer(true)}
+          >
+            ↗ Join Space
           </button>
 
           <button
@@ -3712,6 +3823,10 @@ function App() {
           {!directMode &&
             selectedServer && (
               <div className="channel-header-actions">
+                {selectedServer.owner_id === session?.user?.id && (
+                  <button onClick={() => setShowServerInvite(true)} title="Invite people">🔗</button>
+                )}
+
                 {can(
                   'manage_roles'
                 ) && (
@@ -4459,6 +4574,18 @@ function App() {
                 />
               </div>
 
+              <section className="password-settings-card">
+                <div className="password-settings-heading">
+                  <div><span className="settings-kicker">SECURITY</span><h3>Change password</h3><p>Update your password without leaving Bloom.</p></div>
+                </div>
+                <div className="password-settings-grid">
+                  <div className="input-group"><label>Current password</label><input type="password" value={currentPassword} autoComplete="current-password" onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Current password" /></div>
+                  <div className="input-group"><label>New password</label><input type="password" value={newPassword} autoComplete="new-password" onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 6 characters" /></div>
+                  <div className="input-group"><label>Confirm new password</label><input type="password" value={confirmNewPassword} autoComplete="new-password" onChange={(event) => setConfirmNewPassword(event.target.value)} placeholder="Repeat new password" /></div>
+                </div>
+                <button type="button" className="small-button" onClick={changePassword} disabled={changingPassword}>{changingPassword ? 'Changing password...' : 'Change password'}</button>
+              </section>
+
               <VoiceSettings
                 value={voiceSettings}
                 onChange={setVoiceSettings}
@@ -4491,6 +4618,21 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PASSWORD RESET */}
+      {showPasswordReset && (
+        <div className="modal-overlay password-reset-overlay" onClick={() => setShowPasswordReset(false)}>
+          <div className="settings-modal password-reset-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-header">
+              <div><span className="settings-kicker">ACCOUNT RECOVERY</span><h2>Choose a new password</h2><p className="settings-subtitle">Set a new password for your Bloom account.</p></div>
+              <button type="button" className="modal-close" onClick={() => setShowPasswordReset(false)}>×</button>
+            </div>
+            <div className="input-group"><label>New password</label><input type="password" value={resetPasswordValue} autoComplete="new-password" onChange={(event) => setResetPasswordValue(event.target.value)} placeholder="At least 6 characters" /></div>
+            <div className="input-group"><label>Confirm password</label><input type="password" value={resetPasswordConfirm} autoComplete="new-password" onChange={(event) => setResetPasswordConfirm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') finishPasswordReset() }} placeholder="Repeat your new password" /></div>
+            <div className="settings-actions"><button type="button" className="small-button" onClick={() => setShowPasswordReset(false)}>Cancel</button><button type="button" className="small-button primary" disabled={resettingPassword} onClick={finishPasswordReset}>{resettingPassword ? 'Saving...' : 'Set new password'}</button></div>
           </div>
         </div>
       )}
@@ -5229,6 +5371,16 @@ function App() {
             </div>
           </div>
         )}
+
+      <JoinServerModal open={joiningServer} onClose={() => setJoiningServer(false)} onJoin={joinServerByCode} />
+
+      <ServerInviteModal
+        open={showServerInvite && Boolean(selectedServer)}
+        server={selectedServer}
+        isOwner={selectedServer?.owner_id === session?.user?.id}
+        onClose={() => setShowServerInvite(false)}
+        onRegenerate={regenerateServerInviteCode}
+      />
 
       <CreateServerModal
         open={creatingServer}

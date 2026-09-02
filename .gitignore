@@ -1,12 +1,7 @@
 node_modules/
 dist/
+.vite/
 .env
 .env.local
 .env.*.local
-.vite/
 coverage/
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-*.log
