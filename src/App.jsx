@@ -9,7 +9,6 @@ import RichMessageContent from './components/RichMessageContent'
 import TextAttachment from './components/TextAttachment'
 import MediaLinkPreview from './components/MediaLinkPreview'
 import GlobalBadge from './components/GlobalBadge'
-import SpotifyActivity, { SpotifyConnect } from './components/SpotifyActivity'
 import StatusPicker from './components/StatusPicker'
 import CreateServerModal from './components/CreateServerModal'
 import CreateChannelModal from './components/CreateChannelModal'
@@ -132,6 +131,7 @@ function App() {
 
   const [viewingProfile, setViewingProfile] = useState(null)
   const [viewingProfileRoles, setViewingProfileRoles] = useState([])
+  const [viewingProfileTab, setViewingProfileTab] = useState('profile')
 
   const [showProfileSettings, setShowProfileSettings] =
     useState(false)
@@ -145,6 +145,7 @@ function App() {
   const [settingsCustomStatus, setSettingsCustomStatus] = useState('')
   const [settingsAvatarDecoration, setSettingsAvatarDecoration] = useState('none')
   const [settingsProfileEffect, setSettingsProfileEffect] = useState('none')
+  const [settingsMusicLinks, setSettingsMusicLinks] = useState([])
   const [profileBadges, setProfileBadges] = useState([])
   const [adminBadgeUsername, setAdminBadgeUsername] = useState('')
   const [adminBadgeName, setAdminBadgeName] = useState('Early Supporter')
@@ -1176,6 +1177,7 @@ function App() {
     setSettingsCustomStatus(profile.custom_status || '')
     setSettingsAvatarDecoration(profile.avatar_decoration || 'none')
     setSettingsProfileEffect(profile.profile_effect || 'none')
+    setSettingsMusicLinks(Array.isArray(profile.profile_links) ? profile.profile_links : [])
     originalProfileMediaRef.current = {
       avatar: profile.avatar_url || '',
       banner: profile.banner_url || '',
@@ -1304,7 +1306,7 @@ function App() {
         custom_status: settingsCustomStatus.trim() || null,
         avatar_decoration: settingsAvatarDecoration || 'none',
         profile_effect: settingsProfileEffect || 'none',
-        spotify_show: profile?.spotify_show !== false,
+        profile_links: settingsMusicLinks.filter((item) => item && item.label?.trim() && item.url?.trim()).slice(0, 8),
       })
       .eq('id', session.user.id)
       .select()
@@ -1358,6 +1360,7 @@ function App() {
     if (!data) return
 
     setViewingProfile(data)
+    setViewingProfileTab('profile')
     const { data: badgeRows } = await supabase.from('profile_global_badges').select('badge:global_badges(id,name,description,icon,priority)').eq('user_id', userId)
     const badges = (badgeRows || []).map((row) => row.badge).filter(Boolean).sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))
     setProfileBadges(badges)
@@ -4363,60 +4366,66 @@ function App() {
                 />
               </div>
 
-              <div className={`profile-identity-line`}>
-                <h2>{viewingProfile.username}</h2>
-                <div className="profile-global-badges">
-                  {profileBadges.map((badge) => <GlobalBadge key={badge.id} badge={badge} />)}
+              <div className="profile-identity-line">
+                <div className="profile-identity-main">
+                  <h2>{viewingProfile.username}</h2>
+                  <div className="profile-global-badges">
+                    {profileBadges.map((badge) => <GlobalBadge key={badge.id} badge={badge} />)}
+                  </div>
                 </div>
               </div>
-
-              <SpotifyActivity profile={viewingProfile} editable={false} />
 
               <div className="profile-status-line">
                 <PresenceIndicator status={onlineUsers[viewingProfile.id]?.status || viewingProfile.presence_status || 'offline'} />
                 <span>{viewingProfile.custom_status || (viewingProfile.presence_status || 'offline').replace('dnd', 'Do Not Disturb')}</span>
               </div>
 
-              {viewingProfileRoles.length >
-                0 && (
-                <div className="profile-section">
-                  <h4>
-                    ROLES
-                  </h4>
+              <div className="profile-tabs">
+                <button type="button" className={viewingProfileTab === 'profile' ? 'active' : ''} onClick={() => setViewingProfileTab('profile')}>Profile</button>
+                <button type="button" className={viewingProfileTab === 'music' ? 'active' : ''} onClick={() => setViewingProfileTab('music')}>Music</button>
+              </div>
 
-                  <div className="profile-role-list">
-                    {viewingProfileRoles.map(
-                      (role) => (
-                        <span
-                          key={role.id}
-                          className="profile-role-badge"
-                          style={{
-                            color:
-                              role.color,
-                            borderColor:
-                              role.color,
-                            backgroundColor:
-                              `${role.color}18`,
-                          }}
-                        >
-                          {role.name}
-                        </span>
-                      )
-                    )}
+              {viewingProfileTab === 'profile' ? (
+                <>
+                  {viewingProfileRoles.length > 0 && (
+                    <div className="profile-section">
+                      <h4>ROLES</h4>
+                      <div className="profile-role-list">
+                        {viewingProfileRoles.map((role) => (
+                          <span key={role.id} className="profile-role-badge" style={{ color: role.color, borderColor: role.color, backgroundColor: `${role.color}18` }}>{role.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="profile-section">
+                    <h4>ABOUT</h4>
+                    <p>{viewingProfile.bio || 'This person has not written a bio yet.'}</p>
                   </div>
+                </>
+              ) : (
+                <div className="profile-section profile-music">
+                  <h4>MUSIC</h4>
+                  {Array.isArray(viewingProfile.profile_links) && viewingProfile.profile_links.length > 0 ? (
+                    <div className="profile-link-list">
+                      {viewingProfile.profile_links.map((link, index) => {
+                        const url = String(link.url || '')
+                        const isSpotify = /spotify\.com/i.test(url)
+                        const isYouTube = /(youtube\.com|youtu\.be)/i.test(url)
+                        const kind = isSpotify ? 'Spotify' : isYouTube ? 'YouTube' : 'Link'
+                        const icon = isSpotify ? '♫' : isYouTube ? '▶' : '↗'
+                        return (
+                          <a key={`${index}-${url}`} className="profile-link-card" href={url} target="_blank" rel="noreferrer">
+                            <span className={`profile-link-icon ${isSpotify ? 'spotify' : isYouTube ? 'youtube' : ''}`}>{icon}</span>
+                            <span className="profile-link-copy"><strong>{link.label || kind}</strong><small>{kind}</small></span>
+                          </a>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p>This person has not added any music or links yet.</p>
+                  )}
                 </div>
               )}
-
-              <div className="profile-section">
-                <h4>
-                  ABOUT
-                </h4>
-
-                <p>
-                  {viewingProfile.bio ||
-                    'This person has not written a bio yet.'}
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -4678,11 +4687,30 @@ function App() {
                   </div>
                 </div>
               </div>
+</section>
 
-              <SpotifyConnect profile={profile} onProfileUpdated={setProfile} />
-              <SpotifyActivity profile={profile} editable={true} onProfileUpdated={setProfile} />
-
-              </section>
+              <div className="profile-feature-card profile-music-settings">
+                <div>
+                  <span className="settings-kicker">MUSIC</span>
+                  <h3>Music & links</h3>
+                  <p>Add Spotify tracks, albums, playlists or artists, plus YouTube videos and channels. These appear on your public Music tab.</p>
+                </div>
+                <div className="profile-links-editor">
+                  {settingsMusicLinks.map((link, index) => (
+                    <div className="profile-link-row" key={`${index}-${link.url || 'new'}`}>
+                      <select value={link.type || 'spotify'} onChange={(event) => setSettingsMusicLinks((current) => current.map((item, i) => i === index ? { ...item, type: event.target.value } : item))}>
+                        <option value="spotify">Spotify</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input value={link.label || ''} maxLength={80} placeholder="Title / artist / channel" onChange={(event) => setSettingsMusicLinks((current) => current.map((item, i) => i === index ? { ...item, label: event.target.value } : item))} />
+                      <input type="url" value={link.url || ''} placeholder="https://..." onChange={(event) => setSettingsMusicLinks((current) => current.map((item, i) => i === index ? { ...item, url: event.target.value } : item))} />
+                      <button type="button" className="small-button danger" onClick={() => setSettingsMusicLinks((current) => current.filter((_, i) => i !== index))}>Remove</button>
+                    </div>
+                  ))}
+                  {settingsMusicLinks.length < 8 && <button type="button" className="small-button" onClick={() => setSettingsMusicLinks((current) => [...current, { type: 'spotify', label: '', url: '' }])}>+ Add music or video</button>}
+                </div>
+              </div>
 
               <section id="settings-section-security" className="unified-settings-section">
               <section className="password-settings-card">

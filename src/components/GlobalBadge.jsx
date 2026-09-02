@@ -12,7 +12,7 @@ export default function GlobalBadge({ badge }) {
         onClick={() => setOpen((value) => !value)}
         title={badge.name}
       >
-        <span className="global-badge-icon">{badge.icon || '✦'}</span>
+        {badge.icon || '✦'}
       </button>
       <span className={`global-badge-tooltip ${open ? 'open' : ''}`}>
         <strong>{badge.name}</strong>
