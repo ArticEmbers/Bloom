@@ -4791,70 +4791,60 @@ textarea {
 .voice-settings-error { margin:10px 0 0; color:#ffb8c0; font-size:12px; }
 @media(max-width:620px){ .voice-device-grid{grid-template-columns:1fr} .voice-monitor-card{align-items:flex-start; flex-direction:column} }
 
-
 /* =========================================================
-   PASSWORD / ACCOUNT RECOVERY
+   SERVER JOIN / INVITE UI
 ========================================================= */
-.forgot-password-button {
-  display: inline-flex;
-  align-self: flex-end;
-  margin: -6px 0 4px;
-  padding: 4px 0;
-  background: transparent;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
+.join-space-modal,
+.invite-code-modal {
+  width: min(500px, calc(100vw - 32px));
 }
 
-.forgot-password-button:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
-
-.password-settings-card {
-  margin: 18px 0 4px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.light .password-settings-card {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.password-settings-heading {
-  margin-bottom: 14px;
-}
-
-.password-settings-heading h3 {
-  margin: 5px 0 4px;
-  font-size: 16px;
-}
-
-.password-settings-heading p {
-  margin: 0;
+.join-space-hint {
+  margin: 8px 0 0;
   color: var(--app-muted);
   font-size: 12px;
+  line-height: 1.45;
 }
 
-.password-settings-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.invite-code-box {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--input-background);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
-.password-reset-modal {
-  width: min(500px, 100%);
+.invite-code-box span {
+  flex: 1;
+  min-width: 0;
+  letter-spacing: 0.16em;
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
 }
 
-.password-reset-overlay {
-  z-index: 260;
+.invite-code-box button,
+.invite-regenerate-button {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--app-text);
+  padding: 8px 11px;
+  font-weight: 800;
 }
 
-@media (max-width: 760px) {
-  .password-settings-grid {
-    grid-template-columns: 1fr;
-  }
+.invite-code-box button:hover,
+.invite-regenerate-button:hover {
+  background: var(--hover-background);
+}
+
+.invite-regenerate-button {
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
 }
