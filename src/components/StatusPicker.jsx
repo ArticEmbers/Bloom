@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 const STATUS_OPTIONS = [
   { value: 'online', label: 'Online', color: '#57d989' },
   { value: 'idle', label: 'Idle', color: '#f1c75b' },

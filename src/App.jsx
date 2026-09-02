@@ -40,6 +40,8 @@ const PERMISSION_LABELS = {
   send_voice_messages: 'Send voice messages',
 }
 
+const APPEARANCE_STORAGE_VERSION = 2
+
 const DEFAULT_APPEARANCE = {
   mode: 'dark',
   textColor: '',
@@ -54,6 +56,7 @@ const DEFAULT_APPEARANCE = {
   wallpaperDarkness: 15,
   wallpaperPosition: 'center',
   wallpaperSize: 'cover',
+  appearanceVersion: APPEARANCE_STORAGE_VERSION,
 }
 
 function MentionSuggestions({ query, candidates, onSelect }) {
@@ -96,9 +99,17 @@ function App() {
       const saved = localStorage.getItem('bloom-appearance')
 
       if (saved) {
+        const parsed = JSON.parse(saved)
         return {
           ...DEFAULT_APPEARANCE,
-          ...JSON.parse(saved),
+          ...parsed,
+          appearanceVersion: APPEARANCE_STORAGE_VERSION,
+          // Versions before the current glass/wallpaper behavior could leave
+          // an old blur value in localStorage. Reset that legacy value once.
+          wallpaperBlur:
+            parsed.appearanceVersion === APPEARANCE_STORAGE_VERSION
+              ? Number(parsed.wallpaperBlur || 0)
+              : 0,
         }
       }
     } catch {
@@ -461,7 +472,7 @@ function App() {
       setMentionQuery('')
     }
 
-    const emojiMatch = before.match(/(?:^|\s):([a-zA-Z0-9_+\-]*)$/)
+    const emojiMatch = before.match(/(?:^|\s):([a-zA-Z0-9_+-]*)$/)
     if (emojiMatch) {
       setEmojiQuery(emojiMatch[1])
       setEmojiOpen(true)
@@ -502,7 +513,7 @@ function App() {
     const start = input.selectionStart ?? message.length
     const before = message.slice(0, start)
     const after = message.slice(start)
-    const match = before.match(/(?:^|\s):([a-zA-Z0-9_+\-]*)$/)
+    const match = before.match(/(?:^|\s):([a-zA-Z0-9_+-]*)$/)
     if (!match) return
     const tokenStart = before.length - match[1].length - 1
     const next = `${message.slice(0, tokenStart)}${item.emoji} ${after}`
@@ -518,25 +529,16 @@ function App() {
     })
   }
 
-  function hexToRgba(hex, alpha = 1) {
-    if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) {
-      return undefined
-    }
-
-    const value = hex.slice(1)
-    const red = parseInt(value.slice(0, 2), 16)
-    const green = parseInt(value.slice(2, 4), 16)
-    const blue = parseInt(value.slice(4, 6), 16)
-
-    return `rgba(${red}, ${green}, ${blue}, ${alpha})`
-  }
-
   function saveAppearance(nextAppearance) {
-    setAppearance(nextAppearance)
+    const normalized = {
+      ...nextAppearance,
+      appearanceVersion: APPEARANCE_STORAGE_VERSION,
+    }
+    setAppearance(normalized)
 
     localStorage.setItem(
       'bloom-appearance',
-      JSON.stringify(nextAppearance)
+      JSON.stringify(normalized)
     )
   }
 
@@ -555,12 +557,6 @@ function App() {
 
   function messageKey(messageId, direct = false) {
     return `${direct ? 'd' : 'm'}:${messageId}`
-  }
-
-  function getMessageAuthor(messageItem, direct = false) {
-    return direct
-      ? messageItem.sender || { id: messageItem.sender_id, username: 'Unknown' }
-      : messageItem.profiles || { id: messageItem.user_id, username: 'Unknown' }
   }
 
   function getReactionList(messageItem, direct = false) {
@@ -896,12 +892,6 @@ function App() {
       supabase.removeChannel(channel)
     }
   }, [session?.user?.id])
-
-  useEffect(() => {
-    if (profile) {
-      loadServers()
-    }
-  }, [profile])
 
   useEffect(() => {
     return () => {
@@ -1347,6 +1337,12 @@ function App() {
     setServers(data || [])
   }
 
+  useEffect(() => {
+    if (profile) {
+      loadServers()
+    }
+  }, [profile])
+
   async function createServer(event) {
     event.preventDefault()
 
@@ -1685,6 +1681,8 @@ function App() {
       return
     }
 
+    // This effect intentionally triggers the async loader when the channel changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMessages(selectedChannel.id)
 
     const subscription =
@@ -2091,42 +2089,6 @@ function App() {
     if (messageFileRef.current) {
       messageFileRef.current.value = ''
     }
-  }
-
-  function acceptComposerFile(file) {
-    if (!file) return
-
-    const isAllowed =
-      file.type.startsWith('image/') ||
-      file.type.startsWith('video/') ||
-      file.type.startsWith('audio/') ||
-      file.type === 'text/plain' ||
-      file.type === 'application/pdf' ||
-      !!file.name?.toLowerCase().endsWith('.txt')
-
-    if (!isAllowed) {
-      return setStatus('That file type cannot be attached here.')
-    }
-
-    setSelectedFile(file)
-  }
-
-  function handleComposerPaste(event) {
-    const items = Array.from(event.clipboardData?.items || [])
-    const fileItem = items.find((item) => item.kind === 'file')
-    if (!fileItem) return
-
-    const file = fileItem.getAsFile()
-    if (!file) return
-
-    event.preventDefault()
-    acceptComposerFile(file)
-  }
-
-  function handleComposerDrop(event) {
-    event.preventDefault()
-    const file = event.dataTransfer?.files?.[0]
-    if (file) acceptComposerFile(file)
   }
 
   // =========================================================
@@ -3969,7 +3931,6 @@ function App() {
                 // cycle in the composer and produce a visible jump.
                 if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                   if (emojiOpen) {
-                    const { getEmojiSuggestions } = requireEmojiHelpers()
                     const first = getEmojiSuggestions(emojiQuery, 1)[0]
                     if (first) {
                       event.preventDefault()

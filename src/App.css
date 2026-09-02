@@ -4792,67 +4792,37 @@ textarea {
 @media(max-width:620px){ .voice-device-grid{grid-template-columns:1fr} .voice-monitor-card{align-items:flex-start; flex-direction:column} }
 
 /* =========================================================
-   BLOOM FINAL GLASS OVERRIDES — 2026
-   Explicitly wins over older/duplicated rules above.
-========================================================= */
-
-
-/* =========================================================
-   BLOOM FINAL GLASS OVERRIDES — 2026
-   Explicitly wins over older/duplicated rules above.
-========================================================= */
-
-/* The wallpaper owns the visual background. Panels do not paint
-   opaque surfaces over it and they do not blur the wallpaper. */
+   BLOOM — FINAL GLASS / WALLPAPER SOURCE OF TRUTH
+   Keep application surfaces transparent. Wallpaper is the only
+   full-screen visual background. Explicit wallpaper blur is driven
+   by App.jsx; no panel should blur it independently.
+   ========================================================= */
 .app .server-bar,
 .app .channel-sidebar,
-.app .chat-area {
+.app .chat-area,
+.app .server-header,
+.app .chat-header,
+.app .user-panel {
+  background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-.app.dark .server-bar,
-.app.dark .channel-sidebar,
-.app.dark .chat-area {
-  background: rgba(15, 12, 18, 0.075) !important;
+.app > .app-wallpaper {
+  filter: none;
+  transform: scale(1.001);
+  background-clip: border-box;
 }
 
-.app.light .server-bar,
-.app.light .channel-sidebar,
-.app.light .chat-area {
-  background: rgba(255, 255, 255, 0.075) !important;
-}
-
-/* No divider bars between Bloom's three main regions. */
-.app .server-bar,
-.app .channel-sidebar,
-.app .server-header,
-.app .chat-header,
-.app .user-panel,
-.app .chat-area {
-  border-top: 0 !important;
-  border-right: 0 !important;
-  border-bottom: 0 !important;
-  border-left: 0 !important;
-}
-
-/* Header surfaces are glass-transparent rather than panels. */
-.app .server-header,
-.app .chat-header,
-.app .user-panel {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Keep controls readable without rebuilding the wallpaper behind them. */
 .app .direct-button,
 .app .add-server,
 .app .channel-button,
 .app .server-icon,
 .app .app-brand {
-  background: rgba(255, 255, 255, 0.018) !important;
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 0 !important;
   box-shadow: none !important;
 }
 
@@ -4861,41 +4831,24 @@ textarea {
 .app .channel-button:hover,
 .app .server-icon:hover,
 .app .app-brand:hover {
-  background: rgba(255, 255, 255, 0.055) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
 }
 
 .app .channel-button.active,
 .app .server-icon.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+  background: rgba(232, 138, 165, 0.16) !important;
   box-shadow: inset 2px 0 0 var(--accent) !important;
 }
 
-/* Only modals/settings should have a real glass surface. */
+.app .messages,
+.app .channel-list,
+.app .server-list,
+.app .message-form {
+  border: 0 !important;
+}
+
 .app .modal-overlay {
-  background: rgba(0, 0, 0, 0.38) !important;
+  background: rgba(0, 0, 0, 0.34) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
-}
-
-.app .profile-modal,
-.app .settings-modal,
-.app .roles-modal,
-.app .message-lightbox,
-.app .cropper-modal {
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35) !important;
-}
-
-/* The wallpaper itself is never blurred unless the user's wallpaper
-   blur setting explicitly asks for it. */
-.app > .app-wallpaper {
-  backdrop-filter: none !important;
-}
-
-/* Remove accidental separator lines from utility surfaces. */
-.app .server-list,
-.app .channel-list,
-.app .messages,
-.app .message-form,
-.app .chat-title-area {
-  border: 0 !important;
 }
